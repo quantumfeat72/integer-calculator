@@ -1,0 +1,377 @@
+#!/usr/bin/env python3
+# ^ This is here to tell bash to use the python environment when this is called
+# with terminal. It uses a path and name that aren't universal, so may not work
+# on other computers.
+
+
+### Outline:            params:             returns:
+# helper methods:
+    # init              ..                  ..
+    # prompt            ..                  List
+    # validate          List, int, bool     bool
+    # isPrime           int                 bool
+    # getFactorList     int                 List
+# user functions:
+    # divide            List (int, int)     ..
+    # gcd               List (int, int)     ..
+    # lcm               List (int, int)     ..
+    # factors           List (int)          ..
+    # newPrimes         List (int)          ..
+    # showPrimes        List                ..
+    # help              List                ..
+# core loop:
+    # main              ..                  bool
+# driver
+
+
+### Global variables:
+# commandsList           List  declared by init           (helper method)
+# biggestFactor          int   declared by getFactorList  (helper method)
+# primesList             List  declared by newPrimes      (user function)
+# squareOfLargestPrime   int   declared by newPrimes      (user function)
+
+
+################################ helper methods ################################
+
+    ### init ###
+
+# Prints header, initializes the list of primes, and prints the list of commands
+# Declares the global variable commandsList
+
+# Uses newPrimes and help
+
+def init():
+    global commandsList
+    commandsList = [
+    #0=command, 1=number of args, 2=if has maximum, 3=method name, 4=description]
+        ["div", 2, False, divide,
+         "\"div x y\": Divides x by y, finds a quotient and remainder."],
+        ["gcd", 2, True, gcd,
+         "\"gcd x y\": Finds the greatest common divisor of x and y."],
+        ["lcm", 2, True, lcm,
+         "\"lcm x y\": Finds the lowest common multiple of x and y."],
+        ["fac", 1, True, factors,
+         "\"fac x\":   Finds the prime factors of x."],
+        ["new", 1, False, newPrimes,
+         "\"new x\":   Regenerates list of known primes to include all primes" +
+         " under x."],
+        ["show", 0, False, showPrimes,
+         "\"show\":    Prints the current list of known primes."],
+        ["help", 0, False, help,
+         "\"help\":    Prints this list of known commands."]
+    ]
+    print("-----")
+    print("Integer Calculator")
+    print("-----")
+    newPrimes([0,100])
+    print("-----")
+    help([])
+    print("-----")
+
+
+    ### prompt ###
+
+# Prompts the user for a new input.
+# Splits the input at spaces.
+# Returns a list of arguments.
+
+def prompt():
+    try:
+        userInput = input("Next: ")
+    except EOFError as e:
+        print("Error: "+str(e))
+        return []
+    inputList = userInput.rsplit(" ")
+    done = False
+    while not(done):
+        done=True
+        for x in inputList:
+            if not(bool(x)):
+                inputList.remove(x)
+                done=False
+    return inputList
+
+
+    ### validate ###
+
+# Checks the paramList to make sure that it has right number of arguments.
+# Checks all arguments after the initial command to make sure:
+#   they are all numbers
+#   none of them are zero
+#   none of them are too big for the program to handle with the current primes
+# Returns False if it finds a problem, otherwise returns True.
+
+# Uses squareOfLargestPrime
+
+# ParamType should be a number between 0 and 2 (inclusive)
+
+def validate(paramList, paramType, hasMaxNumber):
+    if paramType!=2 and paramType !=1 and paramType !=0:
+        print("Internal error: invalid param for validate method.")
+        return False
+    if len(paramList) != (paramType+1):
+        s = "s.)"
+        if paramType==1: s= ".)"
+        print("Error: invalid number of arguments "+
+              "(should have "+str(paramType)+" argument"+s)
+        return False
+    firstElement=True
+    for x in paramList:
+        if firstElement:
+            firstElement=False
+            continue
+        if not(x.isnumeric()):
+            print("Error: invalid argument (must be a positive integer).")
+            return False
+        if int(x)==0:
+            print("Error: invalid argument (must be nonzero).")
+            return False
+        if hasMaxNumber and int(x)>squareOfLargestPrime:
+            print("Error: can't use a number larger than "
+                  +str(squareOfLargestPrime)+".")
+            print("Reset the primes list to include larger numbers.")
+            return False
+    return True
+
+
+    ### getFactorList ###
+
+# Returns a list with the exponents for each prime in the factorization of x.
+#   ex: 9 returns [0,2,0,0...]
+# Sets the global variable biggestFactor:
+#   to x's largest factor if that factor is bigger than the largest known prime.
+#   to 0 if all factors are under the largest known prime.
+
+# Uses primesList.
+
+def getFactorList(x):
+    factorList=[]
+    temp = x
+    count = 0
+    for p in primesList:
+        factorList.append(0)
+        while temp%p==0:
+            factorList[count]+=1
+            temp = temp/p
+        count+=1
+    global biggestFactor
+    if temp == 1:
+        biggestFactor=0
+    else:
+        biggestFactor=int(temp)
+    return factorList
+    
+
+
+################################ user functions ################################
+
+    ### divide ###
+
+# Divides x by y and prints the result in two formats.
+
+def divide(inputs):
+    x=int(inputs[1])
+    y=int(inputs[2])
+    quotient = x//y
+    remainder = x%y
+    print("Quotient: "+str(quotient))
+    print("Remainder: "+str(remainder))
+    print(str(x)+" = "+str(quotient)+" * "+str(y)+" + "+str(remainder))
+
+
+    ### gcd ###
+    
+# Finds the greatest comon divisor of x and y and prints the result.
+
+# Uses getFactorList (twice, sets them to xponents and yponents)
+# Uses biggestFactor (twice), and primesList
+
+def gcd(inputs):
+    x=int(inputs[1])
+    y=int(inputs[2])
+    xponents=getFactorList(x)
+    xBiggest=biggestFactor
+    yponents=getFactorList(y)
+    yBiggest=biggestFactor
+    divisor=1
+    temp=0
+    for p in primesList:
+        if xponents[temp]==0 or yponents[temp]==0:
+            pass
+        elif xponents[temp]<=yponents[temp]:
+            divisor*=(p**xponents[temp])
+        else:
+            divisor*=(p**yponents[temp])
+        temp+=1
+    if bool(xBiggest) and bool(yBiggest) and xBiggest==yBiggest:
+        divisor*=xBiggest
+    print("G.C.D.("+str(x)+", "+str(y)+") = "+str(divisor))
+
+
+    ### lcm ###
+    
+# Finds the lowest common multiple of x and y and prints the result.
+
+# Uses getFactorList (twice, sets them to xponents and yponents)
+# Uses biggestFactor (twice), and primesList
+
+def lcm(inputs):
+    x=int(inputs[1])
+    y=int(inputs[2])
+    xponents=getFactorList(x)
+    xBiggest=biggestFactor
+    yponents=getFactorList(y)
+    yBiggest=biggestFactor
+    divisor=1
+    temp=0
+    for p in primesList:
+        if xponents[temp]==0 and yponents[temp]==0:
+            pass
+        elif xponents[temp]>=yponents[temp]:
+            divisor*=(p**xponents[temp])
+        else:
+            divisor*=(p**yponents[temp])
+        temp+=1
+    if bool(xBiggest):
+        divisor*=xBiggest
+    if bool(yBiggest) and xBiggest!=yBiggest:
+        divisor*=yBiggest
+    print("L.C.M.("+str(x)+", "+str(y)+") = "+str(divisor))
+
+
+### factors ###
+    
+# Finds all prime factors of x and prints the result in exponent format.
+#   ex: "24" prints "2^3 * 3"
+
+# Uses getFactorList
+# Uses biggestFactor and primesList
+
+def factors(inputs):
+    x=int(inputs[1])
+    if x==1:
+        print("1 has no prime factors.")
+        return
+    exponents = getFactorList(x)
+    output = str(x)+" ="
+    temp = 0
+    for p in primesList:
+        if not(exponents[temp]==0):
+            if not(output.endswith("=")):
+                output=output+" *"
+            output=output+" "+str(p)
+            if not(exponents[temp]==1):
+                output=output+"^"+str(exponents[temp])
+        temp+=1
+    if bool(biggestFactor):
+        if not(output.endswith("=")):
+            output=output+" *"
+        output=output+" "+str(biggestFactor)
+    print(output)
+
+
+    ### newPrimes ###
+    
+# Sets the global variables primesList and squareOfLargestPrime.
+# Prints the largest prime and its square.
+
+def newPrimes(inputs):
+    x=int(inputs[1])
+    if x<=2:
+        print("Error: must have at least one prime.")
+        return
+    print("Generating a list of all primes under "+str(x)+"...")
+    primeBools = []
+    global primesList
+    primesList = []
+    for y in range(0, (x+1)):
+        primeBools.append(True)
+    for p in range(2,x):
+        if primeBools[p]:
+            primesList.append(p)
+            m=p
+            largestPrime=p
+            while m<=x:
+                primeBools[m]=False
+                m+=p
+    print("Done.")
+    print("Generated a list of the first "+str(len(primesList))+" primes.")
+    print("New largest prime: "+str(largestPrime))
+    global squareOfLargestPrime
+    squareOfLargestPrime = largestPrime**2
+    print("New upper bound for gcd, lcm, and fac: "+str(squareOfLargestPrime))
+
+
+    ### showPrimes ###
+    
+# Prints the current list of known primes.
+
+# Uses primesList.
+
+def showPrimes(inputs):
+    output=""
+    for p in primesList:
+        if bool(output):
+            output=output+", "
+        output=output+str(p)
+    output="Current known primes: "+output
+    print(output)
+
+
+    ### help ###
+    
+# Displays the list of user commands.
+
+# Uses commandsList
+
+def help(inputs):
+    print("Commands:")
+    for x in commandsList:
+        print(x[4])
+    print("\"q\":       Quits the program.")
+
+
+##################################  core loop ##################################
+
+    ### main ###
+    
+# Interprets user input and calls the corresponding function.
+# Returns False unless the input is "q", which returns True.
+#   (This is used by the driver to decide when to quit the program.)
+# (Also converts inputs to lower case - for the user it's not case-sensitive.)
+
+# Uses all user functions.
+# Uses helper methods: prompt and validate.
+# Uses commandsList
+
+def main():
+    inputs = prompt()
+    if len(inputs)==0:
+        return False
+    command = inputs[0].casefold()
+    if command == "q" and validate(inputs, 0, 0):
+        return True
+    for x in commandsList:
+        if command == x[0]:
+            if validate(inputs, x[1], x[2]):
+                x[3](inputs)
+            return False
+    print("Error: command \"" + command +"\" not found.")
+    help([])
+    return False
+
+
+
+#### Driver ####
+
+# Entry point.
+# Calls init to initialize the list of primes and print the list of commands.
+# Calls the main method until it returns True, then ends the program.
+
+init()
+stop = False
+while not(stop):
+    stop=main()
+    print("-----")
+
+print("Quitting...")
